@@ -7,8 +7,8 @@ signal rules_committed(rules: Dictionary)
 @export var misc_label_path: NodePath
 
 const MOVEMENT_RULES := [
-	{id = "standard",   name = "Standard",   desc = "Units move 1 tile per Move command."},
-	{id = "sprint",     name = "Sprint",     desc = "Move 2 tiles; cannot attack after sprinting."},
+	{id = "standard",   name = "Standard",   desc = "Units can move up to their move range each turn."},
+	{id = "sprint",     name = "Sprint",     desc = "Units can move up to 2 tiles; cannot attack after moving in the same turn."},
 	{id = "teleport",   name = "Teleport",   desc = "Blink to any empty tile within 3 tiles; 2-turn cooldown."},
 	{id = "momentum",   name = "Momentum",   desc = "If a unit moves, it must continue 1 more tile (unless blocked)."},
 	{id = "constrained",name = "Constrained",desc = "Orthogonal moves only; no diagonals."},
@@ -47,7 +47,8 @@ func _ready() -> void:
 	_update_ui()
 
 func randomize_rules() -> void:
-	selected_movement = MOVEMENT_RULES[randi_range(0, MOVEMENT_RULES.size() - 1)]
+	#selected_movement = MOVEMENT_RULES[randi_range(0, MOVEMENT_RULES.size() - 1)]
+	selected_movement = MOVEMENT_RULES[0]
 	selected_objective = OBJECTIVE_RULES[randi_range(0, OBJECTIVE_RULES.size() - 1)]
 	selected_misc = MISC_RULES[randi_range(0, MISC_RULES.size() - 1)]
 	_update_ui()

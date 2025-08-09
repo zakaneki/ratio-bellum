@@ -8,4 +8,19 @@ func _ready() -> void:
 	move_range = 1
 	attack_range = 3
 	damage = 2
+	update_health_label()
+	update_damage_label()
 	
+func play_attack_animation(target_pos = null):
+	var sprite = $AnimatedSprite2D
+	sprite.play("attack")
+	if target_pos != null:
+		_spawn_arrow(target_pos)
+	await sprite.animation_finished
+
+func _spawn_arrow(target_pos: Vector2):
+	var arrow_scene = preload("res://arrow.tscn")
+	var arrow = arrow_scene.instantiate()
+	arrow.position = $AnimatedSprite2D.global_position
+	arrow.target_pos = target_pos
+	get_tree().current_scene.add_child(arrow)

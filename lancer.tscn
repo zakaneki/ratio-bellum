@@ -13,6 +13,8 @@ height = 84.0
 script = ExtResource("2_7b02i")
 enemy_frames = ExtResource("3_n0pd7")
 friendly_frames = ExtResource("4_lxy6h")
+coin_value = 1
+is_captain = false
 
 [node name="AnimatedSprite2D" parent="." index="0"]
 sprite_frames = ExtResource("4_lxy6h")

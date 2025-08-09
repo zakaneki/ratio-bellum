@@ -1,0 +1,10 @@
+[gd_scene load_steps=3 format=3 uid="uid://cpi05byt38qbk"]
+
+[ext_resource type="Script" uid="uid://cgtuihph3h4rg" path="res://arrow.gd" id="1_2ndhl"]
+[ext_resource type="Texture2D" uid="uid://5wbvg0hud0jb" path="res://Tiny Swords (Free Pack)/Units/Blue Units/Archer/Arrow.png" id="2_acd0x"]
+
+[node name="Arrow" type="Node2D"]
+script = ExtResource("1_2ndhl")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("2_acd0x")

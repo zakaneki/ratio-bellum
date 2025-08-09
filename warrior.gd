@@ -10,6 +10,8 @@ func _ready() -> void:
 	move_range = 1
 	attack_range = 1
 	damage = 2
+	update_health_label()
+	update_damage_label()
 	
 func reset_turn_flags() -> void:
 	super.reset_turn_flags()
@@ -24,7 +26,17 @@ func take_damage(amount: int) -> void:
 	if hp <= 0:
 		emit_signal("died", self)
 		queue_free()
+	update_health_label()
 		
 func activate_guard() -> void:
 	# Warrior Guard
 	guard_active = true
+	
+var last_attack_anim := 1
+
+func play_attack_animation():
+	var sprite = $AnimatedSprite2D
+	var anim = "attack_1" if last_attack_anim == 1 else "attack_2"
+	last_attack_anim = 2 if last_attack_anim == 1 else 1
+	sprite.play(anim)
+	await sprite.animation_finished

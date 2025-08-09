@@ -8,6 +8,8 @@ func _ready() -> void:
 	move_range = 2
 	attack_range = 1
 	damage = 2
+	update_health_label()
+	update_damage_label()
 
 func get_attack_damage() -> int:
 	var base := damage

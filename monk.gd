@@ -8,6 +8,8 @@ func _ready() -> void:
 	move_range = 1
 	attack_range = 1
 	damage = 1
+	update_health_label()
+	update_damage_label()
 
 func can_heal_target(target: Node) -> bool:
 	return target is CharacterBody2D and side != "enemy"
