@@ -4,10 +4,16 @@ enum State { PLAYER_INPUT, EXECUTING, ENEMY_TURN }
 var current_state = State.PLAYER_INPUT
 
 var grid_size = Vector2i(8, 8) # 8x8 unit grid
-var player_units = []
 var enemy_units = []
 var friendly_units = []
 var selected_rules = []
+# Selection + highlights
+var selected_unit: Node = null
+var reachable_cells: Array[Vector2i] = []
+# Colors/sizes
+var reach_color_normal := Color(0.2, 0.9, 0.4, 0.6)
+var reach_color_tele := Color(0.6, 0.4, 0.9, 0.7)
+var reach_circle_radius := 6.0
 # One-from-each-category rule picks for the current turn
 var turn_rules := {"movement":"standard","objective":"capture","misc":"three_cmd"}
 
@@ -15,7 +21,13 @@ var turn_rules := {"movement":"standard","objective":"capture","misc":"three_cmd
 var rule_panel_path: NodePath = NodePath("/root/Main/CanvasLayer/RulePanel")
 var rule_panel: Node = null
 
-var archer_scene = preload("res://archer.tscn")
+# Preload unit scenes
+var UNIT_SCENES := {
+	"warrior": preload("res://warrior.tscn"),
+	"lancer": preload("res://lancer.tscn"),
+	"archer": preload("res://archer.tscn"),
+	"monk": preload("res://monk.tscn"),
+}
 var friendly_container_path: NodePath = NodePath("/root/Main/UnitContainers/Friendly")
 var enemy_container_path: NodePath = NodePath("/root/Main/UnitContainers/Enemy")
 var execute_button_path: NodePath = NodePath("/root/Main/CanvasLayer/ExecuteButton")
@@ -47,23 +59,17 @@ var player_spawn_cells := [Vector2i(1, 1), Vector2i(2, 1), Vector2i(3, 1)]
 # Occupancy map: cell -> unit Node
 var occupied: Dictionary = {}
 func _ready():
-	
-	_init_grid()
 	_compute_grid_layout()
-	_spawn_units()
-	_spawn_friendly_units()
 	set_process_input(true) # Enable input processing
 	rule_panel = get_node_or_null(rule_panel_path)
-		# Randomize rules for the turn
-	if rule_panel:
-		rule_panel.call("randomize_rules")
-		_on_rules_committed(rule_panel.call("get_selected_rules"))
+	# Randomize rules for the turn
 	if rule_panel:
 		rule_panel.connect("rules_committed", Callable(self, "_on_rules_committed"))
 		# First roll for the first player turn
 		rule_panel.call("randomize_rules")
 		_on_rules_committed(rule_panel.call("get_selected_rules"))
 	# NEW: hook Execute button
+	_spawn_units()
 	var exec_btn := get_node_or_null(execute_button_path) as Button
 	if exec_btn:
 		exec_btn.pressed.connect(_on_execute_pressed)
@@ -81,6 +87,26 @@ func _input(event):
 		else:
 			hovered_cell = Vector2i(-1, -1)
 		queue_redraw() # Request redraw
+	# NEW: left-click selects a friendly unit and computes reachable cells
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		var cell := world_to_grid(event.position)
+		if not in_bounds(cell):
+			return
+		var u := get_unit_at(cell)
+		if is_instance_valid(u) and u.side == "friendly" and current_state == State.PLAYER_INPUT:
+			if selected_unit == u:
+				# Clicked already selected unit: deselect and hide circles
+				selected_unit = null
+				reachable_cells.clear()
+			else:
+				selected_unit = u
+				reachable_cells = _compute_reachable_cells(u)
+			queue_redraw()
+		else:
+			# Clicked empty or enemy: clear selection
+			selected_unit = null
+			reachable_cells.clear()
+			queue_redraw()
 
 func world_to_grid(world_pos: Vector2) -> Vector2i:
 	var local = world_pos - grid_origin
@@ -104,6 +130,14 @@ func _draw():
 		var top_left = grid_to_world(hovered_cell, false)
 		var rect = Rect2(top_left, Vector2(unit_cell_size))
 		draw_rect(rect, Color(1, 1, 0, 0.5), false, 2) # Yellow border, thickness 2
+		
+	# NEW: reachable tiles as circles
+	if selected_unit != null and reachable_cells.size() > 0:
+		var movement_rule = turn_rules.get("movement")
+		var col := reach_color_tele if movement_rule == "teleport" else reach_color_normal
+		for c in reachable_cells:
+			var center := grid_to_world(c, true)
+			draw_circle(center, reach_circle_radius, col)
 
 func _process(_delta):
 	match current_state:
@@ -127,10 +161,6 @@ func _update_status() -> void:
 		lbl.text = "Turn %d — %s | Commands: %d/%d | Coins: %d" % [
 			turn_index, side, commands_remaining, COMMANDS_PER_TURN, coins
 		]
-		
-func _init_grid():
-	# Keep your 16px TileMap as-is; unit grid works independently.
-	pass
 
 # --- NEW: layout helpers ---
 func _compute_grid_layout():
@@ -151,65 +181,95 @@ func grid_to_world(cell: Vector2i, align_center := true) -> Vector2:
 	return pos
 # --- end NEW ---
 
-# Spawns 2 random player units; max field units = 3
 func _spawn_units():
-	# Clear any existing player units
-	for u in player_units:
+	# Clear any existing units
+	for u in friendly_units:
 		if is_instance_valid(u):
 			vacate_cell(u.grid_pos)
-	player_units.clear()
+	friendly_units.clear()
+	for u in enemy_units:
+		if is_instance_valid(u):
+			vacate_cell(u.grid_pos)
+	enemy_units.clear()
+	
+	
+	_spawn_friendly_units()
+
+	# --- ENEMY UNITS ---
+	var to_spawn: Array
+	var enemy_count = randi_range(3, 6)
+	for y in enemy_count:
+		to_spawn.append(ROSTER[randi_range(0, ROSTER.size() - 1)])
+	var top_rows := [0, 1]
+	var enemy_cells := []
+	for y in top_rows:
+		for x in range(grid_size.x):
+			enemy_cells.append(Vector2i(x, y))
+	enemy_cells.shuffle()
+	for i in range(to_spawn.size()):
+		var pos = enemy_cells.pop_front()
+		var unit = _make_unit(to_spawn[i], "enemy", pos)
+		get_node(enemy_container_path).add_child(unit)
+		enemy_units.append(unit)
+		occupy_cell(pos, unit)
+	
+func _spawn_friendly_units():
+	var friendly_positions = []
+	var bottom_rows := [grid_size.y - 2, grid_size.y - 1]
+	for y in bottom_rows:
+		for x in range(grid_size.x):
+			friendly_positions.append(Vector2i(x, y))
+	friendly_positions.shuffle()
 
 	var choices := ROSTER.duplicate()
 	choices.shuffle()
 	var to_spawn := choices.slice(0, 2)
 
+	var leash_active = turn_rules.get("movement", "") == "leashed"
+	var spawned_cells: Array[Vector2i] = []
+
 	for i in range(to_spawn.size()):
-		var pos = player_spawn_cells[i % player_spawn_cells.size()]
-		var unit = archer_scene.instantiate()
-		unit.scale = Vector2.ONE * unit_scale
-		unit.position = grid_to_world(pos, true)
-		unit.side = "player"
-		unit.init_stats_for_class(to_spawn[i])
-		unit.grid_pos = pos
-		unit.died.connect(_on_unit_died)
-		get_node("/root/Main/UnitContainers").add_child(unit)
-		player_units.append(unit)
-		occupy_cell(pos, unit)
+		# If leash is active, ensure each new unit is within 3 tiles of any already spawned friendly unit
+		var pos: Vector2i = Vector2i(-1, -1)
+		if leash_active and spawned_cells.size() > 0:
+			for try_pos in friendly_positions:
+				var ok := false
+				for other in spawned_cells:
+					if abs(try_pos.x - other.x) + abs(try_pos.y - other.y) <= 3:
+						ok = true
+						break
+				if ok:
+					pos = try_pos
+					break
+			if pos == Vector2i(-1, -1):
+				# fallback: just pick next available
+				pos = friendly_positions.pop_front()
+		else:
+			pos = friendly_positions.pop_front()
 
-	# Example: enemies (placeholder)
-	var enemy_positions = [Vector2i(6, 6), Vector2i(7, 6)]
-	for pos in enemy_positions:
-		var enemy = archer_scene.instantiate()
-		enemy.scale = Vector2.ONE * unit_scale
-		enemy.position = grid_to_world(pos, true)
-		enemy.side = "enemy"
-		enemy.init_stats_for_class("warrior")
-		enemy.grid_pos = pos
-		enemy.coin_value = 1
-		enemy.died.connect(_on_unit_died)
-		var econtainer := get_node_or_null(enemy_container_path)
-		(econtainer if econtainer else get_node("/root/Main")).add_child(enemy)
-		enemy_units.append(enemy)
-		occupy_cell(pos, enemy)
-
-func _spawn_friendly_units():
-	var friendly_positions = [Vector2i(1, 6), Vector2i(2, 6)]
-	for pos in friendly_positions:
-		var ally = archer_scene.instantiate()
-		ally.scale = Vector2.ONE * unit_scale
-		ally.position = grid_to_world(pos, true)
-		ally.side = "friendly"
-		ally.init_stats_for_class("warrior")
-		ally.grid_pos = pos
-		ally.died.connect(_on_unit_died)
+		var unit = _make_unit(to_spawn[i], "friendly", pos)
 		var fcontainer := get_node_or_null(friendly_container_path)
-		(fcontainer if fcontainer else get_node("/root/Main")).add_child(ally)
-		friendly_units.append(ally)
-		occupy_cell(pos, ally)
-		
+		(fcontainer if fcontainer else get_node("/root/Main")).add_child(unit)
+		friendly_units.append(unit)
+		occupy_cell(pos, unit)
+		spawned_cells.append(pos)
+
+func _make_unit(class_id: String, side: String, cell: Vector2i) -> Node:
+	var scene = UNIT_SCENES.get(class_id, null)
+	if not scene:
+		push_error("Unknown unit class: %s" % class_id)
+		return null
+	var unit = scene.instantiate()
+	unit.side = side
+	unit.grid_pos = cell
+	unit.position = grid_to_world(cell, true)
+	unit.scale = Vector2.ONE * unit_scale
+	unit.died.connect(_on_unit_died)
+	return unit
+	
 func _check_win_lose():
 	# TODO: Check objective-specific conditions (turn_rules.objective)
-	if player_units.size() == 0:
+	if friendly_units.size() == 0:
 		# Lose condition
 		pass
 	
@@ -223,9 +283,6 @@ func _start_player_turn() -> void:
 	# Reset command budget
 	commands_remaining = COMMANDS_PER_TURN
 	# Reset per-turn flags on units
-	for u in player_units:
-		if is_instance_valid(u):
-			u.reset_turn_flags()
 	for u in friendly_units:
 		if is_instance_valid(u):
 			u.reset_turn_flags()
@@ -358,38 +415,38 @@ func _on_execute_pressed() -> void:
 func can_recruit(class_id: String) -> bool:
 	if not ROSTER.has(class_id):
 		return false
-	if player_units.size() >= MAX_ACTIVE_UNITS:
+	if friendly_units.size() >= MAX_ACTIVE_UNITS:
 		return false
 	return coins >= int(RECRUIT_COST.get(class_id, 999))
 
-func recruit_unit(class_id: String) -> bool:
-	# Call this at start of turn before spending commands
-	if current_state != State.PLAYER_INPUT:
-		return false
-	if not can_recruit(class_id):
-		return false
-	coins -= int(RECRUIT_COST.get(class_id, 0))
-	# Find free spawn cell
-	for i in range(player_spawn_cells.size()):
-		var spawn = player_spawn_cells[i]
-		if is_cell_free(spawn):
-			var u = archer_scene.instantiate()
-			u.scale = Vector2.ONE * unit_scale
-			u.position = grid_to_world(spawn, true)
-			u.side = "player"
-			u.init_stats_for_class(class_id)
-			u.grid_pos = spawn
-			u.died.connect(_on_unit_died)
-			get_node("/root/Main/UnitContainers").add_child(u)
-			player_units.append(u)
-			occupy_cell(spawn, u)
-			_update_status()
-			return true
-	return false
+#func recruit_unit(class_id: String) -> bool:
+	## Call this at start of turn before spending commands
+	#if current_state != State.PLAYER_INPUT:
+		#return false
+	#if not can_recruit(class_id):
+		#return false
+	#coins -= int(RECRUIT_COST.get(class_id, 0))
+	## Find free spawn cell
+	#for i in range(player_spawn_cells.size()):
+		#var spawn = player_spawn_cells[i]
+		#if is_cell_free(spawn):
+			#var u = archer_scene.instantiate()
+			#u.scale = Vector2.ONE * unit_scale
+			#u.position = grid_to_world(spawn, true)
+			#u.side = "friendly"
+			#u.grid_pos = spawn
+			#u.died.connect(_on_unit_died)
+			#get_node("/root/Main/UnitContainers").add_child(u)
+			#friendly_units.append(u)
+			#occupy_cell(spawn, u)
+			#_update_status()
+			#return true
+	#return false
 # --- end NEW ---
 
 # --- NEW: Death/economy handler ---
 func _on_unit_died(unit: Node) -> void:
+	
 	# Award coins if enemy died
 	if unit.side == "enemy":
 		var reward := 1
@@ -400,10 +457,100 @@ func _on_unit_died(unit: Node) -> void:
 		coins += reward
 	# Remove from lists and occupancy
 	vacate_cell(unit.grid_pos)
-	if unit.side == "player":
-		player_units.erase(unit)
-	elif unit.side == "friendly":
+	if unit.side == "friendly":
 		friendly_units.erase(unit)
 	else:
 		enemy_units.erase(unit)
 	_update_status()
+
+# --- helpers for movement rules and reachability ---
+
+func _movement_rule_for_unit(u: Node) -> String:
+	# Only apply movement rule to player side (friendlies). Enemies use their AI.
+	return turn_rules.get("movement") if u.side == "friendly" else "standard"
+
+func _effective_move_range(u: Node) -> int:
+	var rule := _movement_rule_for_unit(u)
+	match rule:
+		"sprint":
+			return 2 # Sprint overrides to 2 tiles per Move command
+		"standard", "constrained", "momentum", "one_step", "leashed":
+			return u.move_range
+		_:
+			return u.move_range
+
+func _neighbors4(c: Vector2i) -> Array[Vector2i]:
+	return [
+		Vector2i(c.x + 1, c.y),
+		Vector2i(c.x - 1, c.y),
+		Vector2i(c.x, c.y + 1),
+		Vector2i(c.x, c.y - 1),
+	]
+
+func _compute_reachable_cells(u: Node) -> Array[Vector2i]:
+	var rule := _movement_rule_for_unit(u)
+	# Teleport: any empty cell within 3 tiles, ignoring blockers
+	if rule == "teleport":
+		var res: Array[Vector2i] = []
+		var radius := 3
+		for y in range(max(0, u.grid_pos.y - radius), min(grid_size.y, u.grid_pos.y + radius + 1)):
+			for x in range(max(0, u.grid_pos.x - radius), min(grid_size.x, u.grid_pos.x + radius + 1)):
+				var c := Vector2i(x, y)
+				if c == u.grid_pos:
+					continue
+				if abs(c.x - u.grid_pos.x) + abs(c.y - u.grid_pos.y) <= radius and is_cell_free(c):
+					res.append(c)
+		res = _apply_leash_if_needed(u, res)
+		return res
+
+	# Default/constrained/momentum/one_step: BFS with 4-neighbors, cost 1, stop at occupied
+	var max_steps := _effective_move_range(u)
+	var visited := {}
+	var q := []
+	visited[u.grid_pos] = 0
+	q.append(u.grid_pos)
+	var results: Array[Vector2i] = []
+	while q.size() > 0:
+		var cur: Vector2i = q.pop_front()
+		var dist := int(visited[cur])
+		for n in _neighbors4(cur):
+			if not in_bounds(n):
+				continue
+			if visited.has(n):
+				continue
+			# Cannot pass through other units; can stand only on empty tiles
+			if occupied.has(n):
+				continue
+			var nd := dist + 1
+			if nd <= max_steps:
+				visited[n] = nd
+				q.append(n)
+				if n != u.grid_pos:
+					results.append(n)
+
+	# Momentum note: path preview remains single-step; forced extra step will be handled during command resolution (TODO).
+	results = _apply_leash_if_needed(u, results)
+	return results
+
+func _apply_leash_if_needed(u: Node, cells: Array[Vector2i]) -> Array[Vector2i]:
+	# Leashed: destination must be within 3 tiles of at least one other friendly unit
+	if _movement_rule_for_unit(u) != "leashed":
+		return cells
+	# Collect allies (excluding self)
+	var allies: Array = []
+	for a in friendly_units:
+		if is_instance_valid(a) and a != u:
+			allies.append(a)
+	if allies.size() == 0:
+		# No allies to leash to; allow all to avoid soft-lock
+		return cells
+	var filtered: Array[Vector2i] = []
+	for c in cells:
+		var ok := false
+		for a in allies:
+			if abs(c.x - a.grid_pos.x) + abs(c.y - a.grid_pos.y) <= 3:
+				ok = true
+				break
+		if ok:
+			filtered.append(c)
+	return filtered

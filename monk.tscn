@@ -1,0 +1,23 @@
+[gd_scene load_steps=6 format=3 uid="uid://cdsjxh20y7onj"]
+
+[ext_resource type="PackedScene" uid="uid://b4m2pjsxu1bdx" path="res://unit.tscn" id="1_np8wm"]
+[ext_resource type="Script" uid="uid://tbxupsatmp0s" path="res://monk.gd" id="2_np8wm"]
+[ext_resource type="SpriteFrames" uid="uid://cjhiv7jya8xp" path="res://sprite_frames/enemy_monk.tres" id="3_bxjue"]
+[ext_resource type="SpriteFrames" uid="uid://1i6mvbx1g410" path="res://sprite_frames/friendly_monk.tres" id="4_1q41v"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_xnqie"]
+radius = 30.0
+height = 84.0
+
+[node name="Monk" instance=ExtResource("1_np8wm")]
+script = ExtResource("2_np8wm")
+enemy_frames = ExtResource("3_bxjue")
+friendly_frames = ExtResource("4_1q41v")
+
+[node name="AnimatedSprite2D" parent="." index="0"]
+sprite_frames = ExtResource("4_1q41v")
+animation = &"idle"
+autoplay = "idle"
+
+[node name="CollisionShape2D" parent="." index="1"]
+shape = SubResource("CapsuleShape2D_xnqie")

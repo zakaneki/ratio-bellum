@@ -47,9 +47,9 @@ func _ready() -> void:
 	_update_ui()
 
 func randomize_rules() -> void:
-	selected_movement = MOVEMENT_RULES[randi() % MOVEMENT_RULES.size()]
-	selected_objective = OBJECTIVE_RULES[randi() % OBJECTIVE_RULES.size()]
-	selected_misc = MISC_RULES[randi() % MISC_RULES.size()]
+	selected_movement = MOVEMENT_RULES[randi_range(0, MOVEMENT_RULES.size() - 1)]
+	selected_objective = OBJECTIVE_RULES[randi_range(0, OBJECTIVE_RULES.size() - 1)]
+	selected_misc = MISC_RULES[randi_range(0, MISC_RULES.size() - 1)]
 	_update_ui()
 
 func get_selected_rules() -> Dictionary:
