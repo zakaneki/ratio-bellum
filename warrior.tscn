@@ -1,9 +1,10 @@
-[gd_scene load_steps=6 format=3 uid="uid://hx5w801fh23i"]
+[gd_scene load_steps=7 format=3 uid="uid://hx5w801fh23i"]
 
 [ext_resource type="PackedScene" uid="uid://b4m2pjsxu1bdx" path="res://unit.tscn" id="1_xu1gf"]
 [ext_resource type="Script" uid="uid://bf1p82l7g4s31" path="res://warrior.gd" id="2_xu1gf"]
 [ext_resource type="SpriteFrames" uid="uid://b5wnivpijob4k" path="res://sprite_frames/enemy_warrior.tres" id="3_7o7qx"]
 [ext_resource type="SpriteFrames" uid="uid://dswkokvt356rv" path="res://sprite_frames/friendly_warrior.tres" id="4_xu1gf"]
+[ext_resource type="AudioStream" uid="uid://c3ycsj101a8y1" path="res://sound_effects/sword-sound-2-36274.mp3" id="5_xu1gf"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_xnqie"]
 radius = 30.0
@@ -13,6 +14,7 @@ height = 84.0
 script = ExtResource("2_xu1gf")
 enemy_frames = ExtResource("3_7o7qx")
 friendly_frames = ExtResource("4_xu1gf")
+sfx_attack = Array[AudioStream]([ExtResource("5_xu1gf")])
 
 [node name="AnimatedSprite2D" parent="." index="0"]
 sprite_frames = ExtResource("4_xu1gf")

@@ -1,9 +1,10 @@
-[gd_scene load_steps=6 format=3 uid="uid://ccfwcs0vrxdpf"]
+[gd_scene load_steps=7 format=3 uid="uid://ccfwcs0vrxdpf"]
 
 [ext_resource type="PackedScene" uid="uid://b4m2pjsxu1bdx" path="res://unit.tscn" id="1_7b02i"]
 [ext_resource type="Script" uid="uid://b2rkq2c86o25y" path="res://lancer.gd" id="2_7b02i"]
 [ext_resource type="SpriteFrames" uid="uid://u5qp7vtam4py" path="res://sprite_frames/enemy_lancer.tres" id="3_n0pd7"]
 [ext_resource type="SpriteFrames" uid="uid://bc6415kxebc2u" path="res://sprite_frames/friendly_lancer.tres" id="4_lxy6h"]
+[ext_resource type="AudioStream" uid="uid://d4if1tx6r7xqd" path="res://sound_effects/spear.mp3" id="5_7b02i"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_xnqie"]
 radius = 30.0
@@ -13,8 +14,7 @@ height = 84.0
 script = ExtResource("2_7b02i")
 enemy_frames = ExtResource("3_n0pd7")
 friendly_frames = ExtResource("4_lxy6h")
-coin_value = 1
-is_captain = false
+sfx_attack = Array[AudioStream]([ExtResource("5_7b02i")])
 
 [node name="AnimatedSprite2D" parent="." index="0"]
 sprite_frames = ExtResource("4_lxy6h")

@@ -1,9 +1,15 @@
-[gd_scene load_steps=2 format=3 uid="uid://b4m2pjsxu1bdx"]
+[gd_scene load_steps=6 format=3 uid="uid://b4m2pjsxu1bdx"]
 
 [ext_resource type="Script" uid="uid://deoakyb6vnp5h" path="res://unit.gd" id="1_btf8p"]
+[ext_resource type="AudioStream" uid="uid://d0twek7vn6llw" path="res://sound_effects/running-on-concrete-268478.mp3" id="2_1sk4h"]
+[ext_resource type="AudioStream" uid="uid://ciet4coaxnmq0" path="res://sound_effects/dying-sound-363801.mp3" id="3_baxm0"]
+[ext_resource type="AudioStream" uid="uid://m55vo884bwj3" path="res://sound_effects/dying-sound-363801 (1).mp3" id="4_of1k5"]
+[ext_resource type="AudioStream" uid="uid://cygtqng4qc6g3" path="res://sound_effects/dying-sound-363801 (2).mp3" id="5_74e6i"]
 
 [node name="Unit" type="CharacterBody2D"]
 script = ExtResource("1_btf8p")
+sfx_run = ExtResource("2_1sk4h")
+sfx_death = Array[AudioStream]([ExtResource("3_baxm0"), ExtResource("4_of1k5"), ExtResource("5_74e6i")])
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
 
@@ -12,11 +18,19 @@ script = ExtResource("1_btf8p")
 [node name="APLabel" type="Label" parent="."]
 offset_right = 40.0
 offset_bottom = 23.0
+theme_override_font_sizes/font_size = 20
 
 [node name="HealthLabel" type="Label" parent="."]
 offset_right = 40.0
 offset_bottom = 23.0
+theme_override_font_sizes/font_size = 20
 
 [node name="DamageLabel" type="Label" parent="."]
 offset_right = 40.0
 offset_bottom = 23.0
+theme_override_font_sizes/font_size = 20
+
+[node name="CoinCDLabel" type="Label" parent="."]
+offset_right = 40.0
+offset_bottom = 19.0
+theme_override_font_sizes/font_size = 20

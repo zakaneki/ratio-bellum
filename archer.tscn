@@ -1,9 +1,10 @@
-[gd_scene load_steps=6 format=3 uid="uid://dud8p1n8uod6s"]
+[gd_scene load_steps=7 format=3 uid="uid://dud8p1n8uod6s"]
 
 [ext_resource type="PackedScene" uid="uid://b4m2pjsxu1bdx" path="res://unit.tscn" id="1_knv3h"]
 [ext_resource type="Script" uid="uid://cdsbpok5rbbrl" path="res://archer.gd" id="2_7oyl4"]
 [ext_resource type="SpriteFrames" uid="uid://cwoapr64afj51" path="res://sprite_frames/enemy_archer.tres" id="3_nsyys"]
 [ext_resource type="SpriteFrames" uid="uid://be1yqrhhabol8" path="res://sprite_frames/friendly_archer.tres" id="4_xnqie"]
+[ext_resource type="AudioStream" uid="uid://cyvwudg0dikst" path="res://sound_effects/arrow-swish_03-306040.mp3" id="5_7oyl4"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_xnqie"]
 radius = 30.0
@@ -13,6 +14,7 @@ height = 84.0
 script = ExtResource("2_7oyl4")
 enemy_frames = ExtResource("3_nsyys")
 friendly_frames = ExtResource("4_xnqie")
+sfx_attack = Array[AudioStream]([ExtResource("5_7oyl4")])
 
 [node name="AnimatedSprite2D" parent="." index="0"]
 sprite_frames = ExtResource("4_xnqie")
